@@ -22,6 +22,8 @@ Every problem in this file actually happened while building the workflow on **Oc
 | 12 | Save to gallery | `Service Accounts do not have storage quota` | Drive node logs in as the robot | [Switch to OAuth2](#12-service-accounts-do-not-have-storage-quota) |
 | 13 | Show the card | Run never finishes; the node waits forever | Form Ending page waits for the form screen | [Removed the node](#13-the-last-node-waits-forever) |
 | 14 | Image node or Pick image data | `Cannot read properties of undefined` | The model returned no image (for example, a safety block) | [See below](#14-no-image-in-the-answer) |
+| 15 | Feedback form → Google Sheets | `Google Sheets API has not been used in project …` | Sheets API switched off | [Enable the Sheets API](#15-sheets-api-not-enabled) |
+| 16 | Feedback form → Google Sheets | `403 - Forbidden`, *The caller does not have permission* | Sheets node logs in as the robot | [Switch to OAuth2](#16-sheets-node-uses-the-service-account) |
 
 ---
 
@@ -166,3 +168,33 @@ Service Accounts do not have storage quota. Leverage shared drives …
 **What to do:** open **Gemini image - draw background**, read the text part and any `finishReason` in its OUTPUT, and soften the prompt.
 
 > Not yet handled automatically. This is planned as the *"break it and fix it"* teaching moment in the workshop.
+
+## 15. Sheets API not enabled
+
+*Hit on November 6, 2026, while adding the workshop feedback form (a separate workflow that saves answers to a Google Sheet).*
+
+```
+Google Sheets API has not been used in project … before or it is disabled.
+```
+
+**Cause:** Google APIs are switched on one at a time. Enabling the Drive API ([#11](#11-drive-api-not-enabled)) doesn't enable Sheets.
+
+**Fix:** same as #11. Open the link in the error message, check the project name at the top, click **Enable**, and wait 2 to 5 minutes. Without a link, use https://console.cloud.google.com/apis/library/sheets.googleapis.com and pick the project whose number matches the error.
+
+## 16. Sheets node uses the service account
+
+*Hit on November 6, 2026, right after #15.*
+
+**Symptom:** in the Google Sheets node, the **Sheet** dropdown shows *Could not load list · 403 - Forbidden · The caller does not have permission*, even though the API is enabled and the sheet exists.
+
+**Cause:** the node is logged in with the **Vertex AI** service account credential, the same trap as [#12](#12-service-accounts-do-not-have-storage-quota). The service account is a separate "robot" user: it can't open a sheet shared only with you, and its credential only has the Vertex AI scope (`cloud-platform`) anyway. n8n may pick it automatically if it's the only Google credential that fits.
+
+**Fix:**
+
+1. In the Sheets node, set **Authentication** to **OAuth2 (recommended)**.
+2. **Credential → Create new credential → Sign in with Google**, with the account that owns the sheet.
+3. Pick the **Sheet** again from the dropdown. It loads now.
+4. **Check the column values.** Picking the sheet again can clear the **Values to Send** fields, so the run "works" but writes empty rows. Fill them in again.
+
+Don't share the sheet publicly to "fix" this. Feedback is personal, so keep it **Restricted**.
+
