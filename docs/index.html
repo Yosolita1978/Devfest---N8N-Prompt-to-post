@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Prompt → Poster · DevFest Seattle 2026</title>
+  <meta name="description" content="Attendee portal for the Prompt to Poster workshop: chain two Gemini models with n8n.">
+  <meta name="theme-color" content="#15111d">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #15111d;
+      --ink-2: #1e1829;
+      --ink-3: #2a2238;
+      --line: #3a3050;
+      --coral: #ea4b71;
+      --coral-soft: #ff8fa8;
+      --coral-glow: rgba(234, 75, 113, 0.35);
+      --cream: #fff3ea;
+      --muted: #ab9fbf;
+      --ok: #5ad6a8;
+      --bad: #ff8a6b;
+      --radius: 18px;
+      --display: "Bricolage Grotesque", Georgia, serif;
+      --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(900px 500px at 85% -10%, var(--coral-glow), transparent 60%),
+        radial-gradient(700px 400px at -10% 30%, rgba(255, 143, 168, 0.12), transparent 60%),
+        var(--ink);
+      background-attachment: fixed;
+      color: var(--cream);
+      font-family: var(--display);
+      font-size: 17px;
+      line-height: 1.5;
+      padding-bottom: 96px;
+    }
+
+    /* Printed-poster grain over everything */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.08;
+      z-index: 100;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+
+    a { color: var(--coral-soft); }
+    button { font-family: inherit; }
+    [hidden] { display: none !important; }
+
+    .wrap { max-width: 640px; margin: 0 auto; padding: 0 20px; }
+
+    /* ---------- Header ---------- */
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(21, 17, 29, 0.78);
+      border-bottom: 1px solid var(--line);
+    }
+    .top .wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+    .brand { font-weight: 800; letter-spacing: -0.02em; font-size: 18px; }
+    .brand span { color: var(--coral); }
+    .score {
+      font-family: var(--mono);
+      font-size: 13px;
+      border: 1px solid var(--coral);
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(234, 75, 113, 0.12);
+    }
+    .score.bump { animation: bump 0.5s ease; }
+
+    .hero { padding: 40px 0 12px; animation: rise 0.7s ease both; }
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--coral-soft);
+    }
+    h1 {
+      font-size: clamp(44px, 13vw, 76px);
+      line-height: 0.92;
+      letter-spacing: -0.04em;
+      margin: 10px 0 14px;
+      font-weight: 800;
+    }
+    h1 .arrow { color: var(--coral); display: inline-block; animation: nudge 2.4s ease-in-out infinite; }
+    .lede { color: var(--muted); max-width: 30em; margin: 0; }
+
+    h2 { font-size: 30px; letter-spacing: -0.03em; margin: 36px 0 6px; font-weight: 800; }
+    .sub { color: var(--muted); margin: 0 0 18px; }
+
+    /* ---------- Progress ---------- */
+    .progress { margin: 24px 0 8px; }
+    .bar {
+      height: 12px;
+      border-radius: 999px;
+      background: var(--ink-3);
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--coral), var(--coral-soft));
+      border-radius: 999px;
+      transition: width 0.6s cubic-bezier(.2, .9, .3, 1.2);
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .stamp {
+      margin: 18px 0 0;
+      padding: 12px 18px;
+      border: 3px solid var(--coral);
+      border-radius: 12px;
+      color: var(--coral);
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transform: rotate(-3deg);
+      width: fit-content;
+      animation: stampIn 0.5s cubic-bezier(.2, 1.6, .4, 1) both;
+    }
+
+    /* ---------- Cards and steps ---------- */
+    .card {
+      background: linear-gradient(180deg, var(--ink-2), rgba(30, 24, 41, 0.6));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin: 14px 0;
+    }
+
+    details.step {
+      background: var(--ink-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      margin: 14px 0;
+      overflow: hidden;
+      transition: border-color 0.3s;
+      animation: rise 0.6s ease both;
+    }
+    details.step:nth-of-type(2) { animation-delay: 0.05s; }
+    details.step:nth-of-type(3) { animation-delay: 0.10s; }
+    details.step:nth-of-type(4) { animation-delay: 0.15s; }
+    details.step:nth-of-type(5) { animation-delay: 0.20s; }
+    details.step:nth-of-type(6) { animation-delay: 0.25s; }
+    details.step[open] { border-color: var(--coral); }
+    details.step.done { border-color: rgba(90, 214, 168, 0.5); }
+
+    details.step summary {
+      list-style: none;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 18px;
+    }
+    details.step summary::-webkit-details-marker { display: none; }
+
+    .num {
+      font-size: 40px;
+      font-weight: 800;
+      line-height: 1;
+      color: transparent;
+      -webkit-text-stroke: 1.5px var(--coral);
+    }
+    details.step.done .num { -webkit-text-stroke-color: var(--ok); }
+
+    .step-title { font-weight: 600; font-size: 19px; line-height: 1.2; }
+    .step-hint { color: var(--muted); font-size: 14px; }
+
+    .pts {
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--ink-3);
+      color: var(--coral-soft);
+      white-space: nowrap;
+    }
+    details.step.done .pts { background: rgba(90, 214, 168, 0.15); color: var(--ok); }
+
+    .step-body { padding: 0 18px 20px; }
+    .step-body p { margin: 0 0 14px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 20px;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      background: var(--coral);
+      color: #fff;
+      box-shadow: 0 8px 24px var(--coral-glow);
+      transition: transform 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn.ghost { background: transparent; color: var(--cream); border: 1px solid var(--line); box-shadow: none; }
+    .btn.block { width: 100%; }
+
+    /* ---------- Join screen ---------- */
+    .join label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 16px 0 6px;
+    }
+    .join input {
+      width: 100%;
+      font-family: var(--display);
+      font-size: 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--ink);
+      color: var(--cream);
+      outline: none;
+    }
+    .join input:focus { border-color: var(--coral); box-shadow: 0 0 0 4px var(--coral-glow); }
+    .join .btn { margin-top: 20px; }
+    .error { color: var(--bad); font-size: 15px; min-height: 22px; margin-top: 10px; }
+    .note { color: var(--muted); font-size: 14px; }
+
+    /* ---------- Mini n8n canvas ---------- */
+    .canvas {
+      position: relative;
+      background-color: var(--ink);
+      background-image: radial-gradient(var(--line) 1px, transparent 1px);
+      background-size: 16px 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 26px 8px 14px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .track {
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      top: 52px;
+      height: 2px;
+      background: repeating-linear-gradient(90deg, var(--muted) 0 6px, transparent 6px 12px);
+      opacity: 0.5;
+    }
+    .packet {
+      position: absolute;
+      top: 47px;
+      left: 10%;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--coral);
+      box-shadow: 0 0 14px var(--coral);
+      animation: travel 3.2s ease-in-out infinite;
+    }
+    .nodes { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+    .node {
+      background: none;
+      border: 0;
+      color: var(--cream);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 0;
+    }
+    .node-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: var(--ink-3);
+      border: 2px solid var(--line);
+      display: grid;
+      place-items: center;
+      font-size: 23px;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+    .node.seen .node-box { border-color: var(--ok); }
+    .node.active .node-box {
+      border-color: var(--coral);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 22px var(--coral-glow);
+    }
+    .node.seen .node-box::after {
+      content: "✓";
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--ok);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+    }
+    .node-name { font-size: 11px; line-height: 1.2; text-align: center; color: var(--muted); }
+
+    .output { background: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+    .output-head {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--coral-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+    pre {
+      margin: 0 0 10px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--cream);
+    }
+    .why { color: var(--muted); font-size: 15px; margin: 0; }
+
+    /* ---------- Who wrote the text? ---------- */
+    /* Stacked, one image per row, so a wide banner and a tall poster both stay readable */
+    .compare { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 14px; }
+    .pick {
+      border: 2px solid var(--line);
+      background: var(--ink);
+      border-radius: 14px;
+      padding: 0;
+      overflow: hidden;
+      cursor: pointer;
+      color: var(--cream);
+      text-align: left;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .pick:active { transform: scale(0.98); }
+    .pick:disabled { cursor: default; }
+    .pick-media { display: block; }
+    /* Each image keeps its own shape (no cropping) */
+    .pick img { display: block; width: 100%; height: auto; }
+    .placeholder {
+      white-space: pre-line;
+      aspect-ratio: 3 / 4;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      background: repeating-linear-gradient(45deg, var(--ink-2) 0 10px, var(--ink-3) 10px 20px);
+    }
+    .pick-label { display: block; padding: 10px 12px; font-weight: 600; }
+    .pick.right { border-color: var(--ok); }
+    .pick.wrong { border-color: var(--bad); }
+
+    /* ---------- Flip cards ---------- */
+    .flips { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .flip {
+      perspective: 800px;
+      background: none;
+      border: 0;
+      padding: 0;
+      cursor: pointer;
+      height: 180px;
+      color: var(--cream);
+      text-align: left;
+    }
+    .flip-inner {
+      display: block; /* it's a span: without this it has no size and the faces collapse */
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.55s cubic-bezier(.2, .8, .3, 1);
+      transform-style: preserve-3d;
+    }
+    .flip.flipped .flip-inner { transform: rotateY(180deg); }
+    .face {
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      padding: 14px;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .face.front { background: var(--ink-3); }
+    .face.front .emoji { font-size: 28px; }
+    .face.front strong { font-size: 17px; line-height: 1.2; }
+    .face.back {
+      background: var(--coral);
+      color: #fff;
+      transform: rotateY(180deg);
+      font-size: 14px;
+      line-height: 1.4;
+      justify-content: center;
+    }
+
+    /* ---------- Quiz ---------- */
+    .q { margin-bottom: 22px; }
+    .q-text { font-weight: 600; margin-bottom: 10px; }
+    .options { display: grid; gap: 8px; }
+    .opt {
+      text-align: left;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--ink);
+      color: var(--cream);
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .opt:disabled { cursor: default; }
+    .opt.right { border-color: var(--ok); background: rgba(90, 214, 168, 0.12); }
+    .opt.wrong { border-color: var(--bad); background: rgba(255, 138, 107, 0.12); }
+    .explain { color: var(--muted); font-size: 15px; margin-top: 8px; }
+
+    /* ---------- Take home, FAQ, resources ---------- */
+    .level {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--coral);
+      color: #fff;
+      margin-right: 8px;
+      vertical-align: 2px;
+    }
+    .level.l301 { background: var(--cream); color: var(--ink); }
+    .check { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: start; cursor: pointer; }
+    .check input { width: 24px; height: 24px; accent-color: var(--coral); margin: 2px 0 0; }
+    .check strong { display: block; margin-bottom: 4px; }
+    .check p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    details.faq { border-bottom: 1px solid var(--line); padding: 14px 0; }
+    details.faq summary {
+      cursor: pointer;
+      font-weight: 600;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    details.faq summary::-webkit-details-marker { display: none; }
+    details.faq summary::after { content: "+"; color: var(--coral); font-size: 22px; line-height: 1; }
+    details.faq[open] summary::after { content: "–"; }
+    details.faq p { color: var(--muted); margin: 10px 0 0; }
+
+    .res {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+      text-decoration: none;
+      color: var(--cream);
+    }
+    .res small { display: block; color: var(--muted); }
+    .res .go { color: var(--coral); font-size: 22px; }
+    .res.disabled { opacity: 0.45; pointer-events: none; }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.85em;
+      background: var(--ink-3);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    /* ---------- Bottom tabs ---------- */
+    .tabs {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 30;
+      background: rgba(21, 17, 29, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .tabs .wrap { display: grid; grid-template-columns: repeat(4, 1fr); padding: 0 8px; }
+    .tab {
+      background: none;
+      border: 0;
+      color: var(--muted);
+      padding: 12px 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      border-top: 2px solid transparent;
+    }
+    .tab .ico { font-size: 20px; }
+    .tab.on { color: var(--cream); border-top-color: var(--coral); }
+
+    .panel { display: none; }
+    .panel.on { display: block; animation: rise 0.4s ease both; }
+
+    footer { color: var(--muted); font-size: 13px; padding: 30px 0; text-align: center; }
+    .linkish {
+      background: none;
+      border: 0;
+      color: var(--muted);
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 8px;
+    }
+
+    /* ---------- Toast ---------- */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 110px;
+      z-index: 50;
+      transform: translateX(-50%);
+      background: var(--coral);
+      color: #fff;
+      font-weight: 800;
+      font-size: 20px;
+      padding: 10px 20px;
+      border-radius: 999px;
+      box-shadow: 0 10px 30px var(--coral-glow);
+      pointer-events: none;
+      opacity: 0;
+    }
+    .toast.show { animation: toast 1.4s ease both; }
+
+    /* ---------- Animations ---------- */
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    @keyframes nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(8px); } }
+    @keyframes travel {
+      0% { left: 10%; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { left: calc(90% - 12px); opacity: 0; }
+    }
+    @keyframes stampIn { from { opacity: 0; transform: rotate(-3deg) scale(2.2); } to { opacity: 1; transform: rotate(-3deg) scale(1); } }
+    @keyframes bump { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.18); } }
+    @keyframes toast {
+      0% { opacity: 0; transform: translate(-50%, 20px) scale(0.8); }
+      20% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      80% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -20px) scale(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .toast.show { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="top">
+    <div class="wrap">
+      <div class="brand">Prompt <span>→</span> Poster</div>
+      <div class="score" id="score">0 / 100 pts</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <section class="hero">
+      <div class="eyebrow">GDG Seattle DevFest · Nov 7, 2026</div>
+      <h1>Prompt <span class="arrow">→</span><br>Poster</h1>
+      <p class="lede">Pitch a talk idea, pick a vibe, and watch two Gemini models and n8n turn it into a promo card in about 30 seconds.</p>
+    </section>
+
+    <!-- ===== Join screen ===== -->
+    <section id="join-screen" class="card join">
+      <h2 style="margin-top:0">Join the workshop</h2>
+      <p class="note">Use a nickname, not your real name. Your progress stays on this phone only.</p>
+      <form id="join-form" novalidate>
+        <label for="nickname">Nickname</label>
+        <input id="nickname" maxlength="24" autocomplete="off" placeholder="SalsaBot 3000" required>
+        <div class="error" id="join-error" role="alert"></div>
+        <button class="btn block" type="submit">Enter workshop →</button>
+      </form>
+    </section>
+
+    <!-- ===== Main app (shown after joining) ===== -->
+    <div id="app" hidden>
+
+      <div class="progress">
+        <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+        <div class="progress-label">
+          <span id="hello">Hi!</span>
+          <span id="steps-label">0 of 6 steps</span>
+        </div>
+        <div class="stamp" id="stamp" hidden>★ Poster Pro ★</div>
+      </div>
+
+      <!-- ----- Workshop tab ----- -->
+      <section class="panel on" id="panel-workshop">
+        <h2>Your build plan</h2>
+        <p class="sub">Six short steps. Tap one to open it.</p>
+
+        <details class="step" data-step="join">
+          <summary>
+            <span class="num">1</span>
+            <span><span class="step-title">Join</span><br><span class="step-hint">You're in. Nice.</span></span>
+            <span class="pts">+10</span>
+          </summary>
+          <div class="step-body">
+            <p>Welcome! Today you'll see <strong>prompt chaining</strong>: one AI model writes the prompt for another. n8n connects the pieces so you can see every step.</p>
+          </div>
+        </details>
+
+        <details class="step" data-step="poster">
+          <summary>
+            <span class="num">2</span>
+            <span><span class="step-title">Make your poster</span><br><span class="step-hint">Title, topic, vibe. Go!</span></span>
+            <span class="pts">+20</span>
+          </summary>
+          <div class="step-body">
+            <p>Invent a talk. Something fun, fictional, and with no names or personal info. Pick a vibe and submit.</p>
+            <a class="btn block" id="form-link" href="#" target="_blank" rel="noopener">Open the poster form 🎨</a>
+            <p class="note" style="margin-top:12px">Your card lands in the gallery in about 30 seconds. The host reviews cards before they go on the big screen.</p>
+          </div>
+        </details>
+
+        <details class="step" data-step="chain">
+          <summary>
+            <span class="num">3</span>
+            <span><span class="step-title">What just happened?</span><br><span class="step-hint">Tap each node to see its data</span></span>
+            <span class="pts">+10</span>
+          </summary>
+          <div class="step-body">
+            <p>This is the real workflow, shrunk down. In n8n you can open any node and see exactly what came out of it. Try it: tap all 5.</p>
+            <div class="canvas">
+              <div class="track"></div>
+              <div class="packet"></div>
+              <div class="nodes" id="nodes"></div>
+            </div>
+            <div class="output" id="node-output">
+              <div class="output-head">Tap a node</div>
+              <p class="why">Each node passes its output to the next one, like a relay.</p>
+            </div>
+            <a class="btn block" href="tutorial.html" target="_blank" rel="noopener" style="margin-top:14px">Follow the full tour, node by node 🧭</a>
+          </div>
+        </details>
+
+        <details class="step" data-step="compare">
+          <summary>
+            <span class="num">4</span>
+            <span><span class="step-title">Who wrote the text?</span><br><span class="step-hint">Which one can you trust every time?</span></span>
+            <span class="pts">+20</span>
+          </summary>
+          <div class="step-body">
+            <p>Two real posters. In one, the image model drew the text itself. In the other, n8n added the text on top. Tap the one where <strong>n8n wrote the text</strong>.</p>
+            <div class="compare">
+              <button class="pick" type="button" data-pick="A" id="pick-A">
+                <span class="pick-media" id="media-A"></span>
+                <span class="pick-label">Image A</span>
+              </button>
+              <button class="pick" type="button" data-pick="B" id="pick-B">
+                <span class="pick-media" id="media-B"></span>
+                <span class="pick-label">Image B</span>
+              </button>
+            </div>
+            <div id="compare-reveal" hidden>
+              <p id="compare-result" style="font-weight:600"></p>
+              <p class="why">Image models can draw text, and sometimes it's perfect. But nothing guarantees it: the spelling, font, and position can change on every run, and fixing one word means redrawing the whole image. n8n writes the text with a real font, so it's exact and in the same place every time. Image A is real: it happened while making a GDG Seattle banner.</p>
+            </div>
+          </div>
+        </details>
+
+        <details class="step" data-step="why">
+          <summary>
+            <span class="num">5</span>
+            <span><span class="step-title">Why n8n?</span><br><span class="step-hint">Tap all 6 cards</span></span>
+            <span class="pts">+10</span>
+          </summary>
+          <div class="step-body">
+            <p>You could build this with code. Tap each card to see what n8n does for you.</p>
+            <div class="flips" id="flips"></div>
+          </div>
+        </details>
+
+        <details class="step" data-step="quiz">
+          <summary>
+            <span class="num">6</span>
+            <span><span class="step-title">Quick quiz</span><br><span class="step-hint">3 questions, 10 points each</span></span>
+            <span class="pts">+30</span>
+          </summary>
+          <div class="step-body" id="quiz"></div>
+        </details>
+      </section>
+
+      <!-- ----- Take home tab ----- -->
+      <section class="panel" id="panel-home">
+        <h2>Take it home</h2>
+        <p class="sub">Build your own copy after the workshop. You'll need an n8n account and a Google Cloud project with billing. Plan for about 45 minutes the first time.</p>
+        <div id="home-list"></div>
+      </section>
+
+      <!-- ----- FAQ tab ----- -->
+      <section class="panel" id="panel-faq">
+        <h2>FAQ</h2>
+        <p class="sub">Stuck? Check here first, then wave at the host.</p>
+        <div id="faq-list"></div>
+      </section>
+
+      <!-- ----- Resources tab ----- -->
+      <section class="panel" id="panel-res">
+        <h2>Resources</h2>
+        <p class="sub">Everything from today's session.</p>
+        <div id="res-list"></div>
+      </section>
+
+      <footer>
+        Made for GDG Seattle DevFest 2026 by the Seattle n8n Ambassadors.<br>
+        <button class="linkish" id="reset" type="button">Start over on this phone</button>
+      </footer>
+    </div>
+  </main>
+
+  <nav class="tabs" id="tabs" hidden>
+    <div class="wrap">
+      <button class="tab on" type="button" data-tab="workshop"><span class="ico">🎨</span>Workshop</button>
+      <button class="tab" type="button" data-tab="home"><span class="ico">🏠</span>Take home</button>
+      <button class="tab" type="button" data-tab="faq"><span class="ico">💬</span>FAQ</button>
+      <button class="tab" type="button" data-tab="res"><span class="ico">📦</span>Resources</button>
+    </div>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // =========================================================
+    // CONFIG: the only part you normally need to edit
+    // =========================================================
+    const CONFIG = {
+      formUrl: "https://yosola.app.n8n.cloud/form/prompt-to-poster",
+      // Fill in once the GitHub repo exists, e.g. "https://github.com/your-user/prompt-to-poster"
+      repoUrl: "",
+      // Leave empty during the session (decision D5). Add it after the host reviews the gallery.
+      galleryUrl: "",
+      // "Who wrote the text?" images (put them in docs/images/). Empty = placeholder.
+      // One poster where the image model drew the text, one final poster where n8n added it.
+      imageA: "images/model-text.jpg",
+      imageB: "images/n8n.jpg",
+      // Which image has the text added by n8n (the correct answer): "A" or "B"
+      chainedImage: "B"
+    };
+
+    // =========================================================
+    // Content
+    // =========================================================
+    const STEP_POINTS = { join: 10, poster: 20, chain: 10, compare: 20, why: 10 };
+    const QUIZ_POINTS = 10;
+    const MAX_POINTS = 100;
+    const STEP_IDS = ["join", "poster", "chain", "compare", "why", "quiz"];
+
+    const NODES = [
+      {
+        id: "form",
+        icon: "📱",
+        name: "Form",
+        title: "Talk idea form · output",
+        output: '{\n  "Talk title": "Teaching Robots to Salsa",\n  "Topic": "Reinforcement learning for motion, explained with dance",\n  "Vibe": "retro"\n}',
+        why: "What you typed. A vibe like \"retro\" is great for humans, but too vague for an image model."
+      },
+      {
+        id: "text",
+        icon: "✍️",
+        name: "Gemini text",
+        title: "Gemini - write copy · output",
+        output: '{\n  "headline": "Teaching Robots to Salsa",\n  "tagline": "How reinforcement learning taught a robot to find the beat.",\n  "image_prompt": "A chrome 1970s-style robot mid-spin on a glowing checkered dance floor, retro poster illustration with halftone texture, warm palette of tangerine, mustard yellow, and teal..."\n}',
+        why: "Gemini acts as an art director. A response schema forces clean JSON, so the next node never breaks. The image_prompt is the prompt for the next model: that's the chain."
+      },
+      {
+        id: "image",
+        icon: "🖼️",
+        name: "Gemini image",
+        title: "Gemini image - draw background · output",
+        output: '{\n  "candidates": [{\n    "content": {\n      "parts": [{\n        "inlineData": {\n          "mimeType": "image/png",\n          "data": "iVBORw0KGgo... (about 2 MB)"\n        }\n      }]\n    }\n  }]\n}',
+        why: "The second model draws only the background, from Gemini's art direction. The image comes back as text (base64), and n8n turns it into a file."
+      },
+      {
+        id: "edit",
+        icon: "🔤",
+        name: "Edit Image",
+        title: "Add headline and tagline · what it did",
+        output: "1. Resize to 896 × 1280\n2. Draw a dark band at the bottom\n3. Write the headline and tagline",
+        why: "n8n writes the text itself, so the headline is always spelled exactly as Gemini wrote it, and every card has the same layout."
+      },
+      {
+        id: "drive",
+        icon: "📁",
+        name: "Drive",
+        title: "Save to gallery · output",
+        output: '{\n  "name": "20261107-101530-retro.png",\n  "folder": "DevFest Gallery"\n}',
+        why: "The finished card lands in a shared folder. The host reviews it before it goes on the big screen."
+      }
+    ];
+
+    const WHY_CARDS = [
+      { emoji: "🔍", title: "See every step", back: "Click any node to see what went in and what came out. You can read Gemini's art direction before the image is even drawn." },
+      { emoji: "🔁", title: "Re-run just one step", back: "Like the text but not the picture? Re-run only the image step. No waiting, and no paying for the text again." },
+      { emoji: "🔀", title: "Change models easily", back: "Google retired two models while we built this. Switching took one small edit." },
+      { emoji: "🧩", title: "Ready-made pieces", back: "The form, Google login, image editing, and Drive upload are each one ready-made node. No server to build." },
+      { emoji: "📜", title: "A history of every run", back: "With the whole room submitting, the Executions tab shows every poster made, and why any one failed." },
+      { emoji: "⚖️", title: "When code is better", back: "For very big or complex logic, code is easier to manage. n8n shines when you want to see, change, and connect pieces fast." }
+    ];
+
+    const QUIZ = [
+      {
+        id: "q1",
+        text: "What breaks if Gemini wraps its answer in markdown?",
+        options: ["The form", "Google Drive", "The node that reads Gemini's JSON", "Nothing"],
+        correct: 2,
+        explain: "Read Gemini copy runs JSON.parse. Extra markdown breaks it. That's why the request includes a response schema."
+      },
+      {
+        id: "q2",
+        text: "Why does n8n add the headline instead of the image model?",
+        options: ["So it's spelled exactly right, with the same layout every time", "Image models can't draw text at all", "It's required by Google Drive", "It makes the image smaller"],
+        correct: 0,
+        explain: "Today's image model can write text. But n8n guarantees the exact words and a consistent layout for the gallery."
+      },
+      {
+        id: "q3",
+        text: "Two models were retired before this event. What had to change in the workflow?",
+        options: ["Rebuild it from scratch", "New Google credentials", "The model ID in each request's URL", "The form questions"],
+        correct: 2,
+        explain: "One URL per model. Everything else stayed the same."
+      }
+    ];
+
+    const HOME_ITEMS = [
+      { id: "import", level: "201", title: "Import the workflow", text: "In n8n: Create Workflow → ⋯ → Import from File → workflow/prompt-to-poster.json.", file: "workflow/prompt-to-poster.json" },
+      { id: "setup", level: "201", title: "Connect Google Cloud", text: "Enable the Vertex AI API, create a service account, and add the credentials. The setup guide walks through every click.", file: "docs/setup-guide.md" },
+      { id: "vibe", level: "301", title: "Add your own vibe and voice", text: "Add an option to the form's Vibe dropdown, then change the system instruction to give your art director a new style.", file: "prompts/gemini-prompt.md" },
+      { id: "model", level: "301", title: "Swap the model", text: "Change the model ID in a Gemini node's URL. Check the model's page first: newer models only run on the global location.", file: "docs/decisions-and-findings.md" }
+    ];
+
+    const FAQ = [
+      { q: "My poster didn't show up. What now?", a: "Give it about a minute; with a full room it can be slower. Sometimes a safety filter blocks an image. Try a different topic, and tell the host: failed runs make great teaching moments." },
+      { q: "Is my data stored?", a: "Your talk idea goes to Google's Gemini models through the host's Google Cloud project, and the finished card is saved in the workshop gallery. This page stores your nickname and progress only on your own phone. That's why we ask for no names or personal info." },
+      { q: "The form is blank on my laptop.", a: "It's a known issue in desktop Chrome. Use your phone's browser for the form." },
+      { q: "When can I see the gallery?", a: "At the end of the session. The host reviews every card first, then shares the link." },
+      { q: "How much does it cost to run this myself?", a: "Each poster makes two Gemini calls, billed to your own Google Cloud project. Check the current Vertex AI pricing, and set a budget alert before you start." },
+      { q: "Which models does it use?", a: "gemini-3.8-flash writes the copy and art direction, and gemini-3.1-flash-image draws the background. Both run on Vertex AI in the global location (as of October 2026)." },
+      { q: "Can I use it without Google Cloud?", a: "Not as is. The workflow calls Vertex AI. You could swap the two HTTP Request nodes for another provider, but that's not covered in the setup guide." }
+    ];
+
+    const RESOURCES = [
+      { title: "Workshop repository", text: "All files, docs, and the README", file: "" },
+      { title: "The n8n workflow", text: "prompt-to-poster.json, ready to import", file: "workflow/prompt-to-poster.json" },
+      { title: "The Gemini prompt", text: "System instruction and JSON schema", file: "prompts/gemini-prompt.md" },
+      { title: "Setup guide", text: "Google Cloud + n8n, step by step", file: "docs/setup-guide.md" },
+      { title: "Troubleshooting", text: "Every error we hit, and the fix", file: "docs/troubleshooting.md" }
+    ];
+
+    // =========================================================
+    // Saved progress (on this phone only)
+    // =========================================================
+    const STORAGE_KEY = "prompt-to-poster-portal-v1";
+
+    function emptyState() {
+      return { nickname: "", steps: {}, nodesSeen: [], flipped: [], compareGuess: "", quiz: {}, home: {} };
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return emptyState();
+        return Object.assign(emptyState(), JSON.parse(saved));
+      } catch (error) {
+        return emptyState();
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (error) {
+        // Private browsing can block storage. The page still works, it just won't remember.
+      }
+    }
+
+    let state = loadState();
+
+    // =========================================================
+    // Points and steps
+    // =========================================================
+    function quizPoints() {
+      let points = 0;
+      for (const question of QUIZ) {
+        if (state.quiz[question.id] === question.correct) points += QUIZ_POINTS;
+      }
+      return points;
+    }
+
+    function totalPoints() {
+      let points = 0;
+      for (const id in STEP_POINTS) {
+        if (state.steps[id]) points += STEP_POINTS[id];
+      }
+      return points + quizPoints();
+    }
+
+    function isStepDone(id) {
+      if (id === "quiz") return QUIZ.every(question => question.id in state.quiz);
+      return Boolean(state.steps[id]);
+    }
+
+    function completeStep(id) {
+      if (state.steps[id]) return;
+      state.steps[id] = true;
+      saveState();
+      showToast("+" + STEP_POINTS[id] + " pts");
+      render();
+    }
+
+    function repoFileUrl(file) {
+      if (!CONFIG.repoUrl) return "";
+      if (!file) return CONFIG.repoUrl;
+      return CONFIG.repoUrl.replace(/\/$/, "") + "/blob/main/" + file;
+    }
+
+    // =========================================================
+    // Small helpers
+    // =========================================================
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    let toastTimer = null;
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.remove("show");
+      void toast.offsetWidth; // restart the animation
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 1500);
+
+      const score = document.getElementById("score");
+      score.classList.remove("bump");
+      void score.offsetWidth;
+      score.classList.add("bump");
+    }
+
+    // =========================================================
+    // Build the dynamic parts once
+    // =========================================================
+    function buildNodes() {
+      const container = document.getElementById("nodes");
+      for (const node of NODES) {
+        const button = el("button", "node");
+        button.type = "button";
+        button.dataset.node = node.id;
+        button.appendChild(el("span", "node-box", node.icon));
+        button.appendChild(el("span", "node-name", node.name));
+        button.addEventListener("click", () => showNode(node.id));
+        container.appendChild(button);
+      }
+    }
+
+    function showNode(id) {
+      const node = NODES.find(item => item.id === id);
+      const output = document.getElementById("node-output");
+      output.innerHTML = "";
+      output.appendChild(el("div", "output-head", node.title));
+      output.appendChild(el("pre", "", node.output));
+      output.appendChild(el("p", "why", node.why));
+
+      document.querySelectorAll(".node").forEach(button => {
+        button.classList.toggle("active", button.dataset.node === id);
+      });
+
+      if (!state.nodesSeen.includes(id)) {
+        state.nodesSeen.push(id);
+        saveState();
+      }
+      if (state.nodesSeen.length === NODES.length) completeStep("chain");
+      render();
+    }
+
+    function buildCompare() {
+      for (const letter of ["A", "B"]) {
+        const media = document.getElementById("media-" + letter);
+        const source = CONFIG["image" + letter];
+        if (source) {
+          const image = el("img");
+          image.src = source;
+          image.alt = "Poster " + letter;
+          image.loading = "lazy";
+          media.appendChild(image);
+        } else {
+          media.appendChild(el("span", "placeholder", "Image " + letter + "\ncoming soon"));
+        }
+        document.getElementById("pick-" + letter).addEventListener("click", () => pickImage(letter));
+      }
+    }
+
+    function pickImage(letter) {
+      if (state.compareGuess) return;
+      state.compareGuess = letter;
+      saveState();
+      completeStep("compare");
+      render();
+    }
+
+    function buildFlips() {
+      const container = document.getElementById("flips");
+      WHY_CARDS.forEach((card, index) => {
+        const button = el("button", "flip");
+        if (state.flipped.includes(index)) button.classList.add("flipped");
+        button.type = "button";
+        button.dataset.index = String(index);
+        const inner = el("span", "flip-inner");
+        const front = el("span", "face front");
+        front.appendChild(el("span", "emoji", card.emoji));
+        front.appendChild(el("strong", "", card.title));
+        const back = el("span", "face back", card.back);
+        inner.appendChild(front);
+        inner.appendChild(back);
+        button.appendChild(inner);
+        button.addEventListener("click", () => flipCard(index, button));
+        container.appendChild(button);
+      });
+    }
+
+    function flipCard(index, button) {
+      button.classList.toggle("flipped");
+      if (!state.flipped.includes(index)) {
+        state.flipped.push(index);
+        saveState();
+      }
+      if (state.flipped.length === WHY_CARDS.length) completeStep("why");
+    }
+
+    function buildQuiz() {
+      const container = document.getElementById("quiz");
+      for (const question of QUIZ) {
+        const block = el("div", "q");
+        block.dataset.q = question.id;
+        block.appendChild(el("div", "q-text", question.text));
+        const options = el("div", "options");
+        question.options.forEach((label, index) => {
+          const button = el("button", "opt", label);
+          button.type = "button";
+          button.dataset.index = String(index);
+          button.addEventListener("click", () => answerQuestion(question, index));
+          options.appendChild(button);
+        });
+        block.appendChild(options);
+        const explain = el("div", "explain");
+        explain.hidden = true;
+        block.appendChild(explain);
+        container.appendChild(block);
+      }
+    }
+
+    function answerQuestion(question, index) {
+      if (question.id in state.quiz) return;
+      state.quiz[question.id] = index;
+      saveState();
+      if (index === question.correct) showToast("+" + QUIZ_POINTS + " pts");
+      render();
+    }
+
+    function buildHome() {
+      const container = document.getElementById("home-list");
+      for (const item of HOME_ITEMS) {
+        const card = el("div", "card");
+        const label = el("label", "check");
+        const box = el("input");
+        box.type = "checkbox";
+        box.dataset.home = item.id;
+        box.addEventListener("change", () => {
+          state.home[item.id] = box.checked;
+          saveState();
+        });
+        const text = el("span");
+        const title = el("strong");
+        title.appendChild(el("span", "level" + (item.level === "301" ? " l301" : ""), item.level));
+        title.appendChild(document.createTextNode(item.title));
+        text.appendChild(title);
+        text.appendChild(el("p", "", item.text));
+        const link = repoFileUrl(item.file);
+        if (link) {
+          const anchor = el("a", "", "Open " + item.file + " ↗");
+          anchor.href = link;
+          anchor.target = "_blank";
+          anchor.rel = "noopener";
+          const linkLine = el("p");
+          linkLine.style.marginTop = "8px";
+          linkLine.appendChild(anchor);
+          text.appendChild(linkLine);
+        }
+        label.appendChild(box);
+        label.appendChild(text);
+        card.appendChild(label);
+        container.appendChild(card);
+      }
+    }
+
+    function buildFaq() {
+      const container = document.getElementById("faq-list");
+      for (const item of FAQ) {
+        const details = el("details", "faq");
+        details.appendChild(el("summary", "", item.q));
+        details.appendChild(el("p", "", item.a));
+        container.appendChild(details);
+      }
+    }
+
+    function addResource(container, title, text, link) {
+      const anchor = el("a", "res" + (link ? "" : " disabled"));
+      if (link) {
+        anchor.href = link;
+        anchor.target = "_blank";
+        anchor.rel = "noopener";
+      }
+      const words = el("span");
+      words.appendChild(el("strong", "", title));
+      words.appendChild(el("small", "", link ? text : text + " · link coming soon"));
+      anchor.appendChild(words);
+      anchor.appendChild(el("span", "go", "↗"));
+      container.appendChild(anchor);
+    }
+
+    function buildResources() {
+      const container = document.getElementById("res-list");
+      for (const item of RESOURCES) {
+        addResource(container, item.title, item.text, repoFileUrl(item.file));
+      }
+      addResource(container, "Walk the canvas", "Visual tour of all 8 nodes", "tutorial.html");
+      addResource(container, "The gallery", "Every card from today", CONFIG.galleryUrl);
+    }
+
+    // =========================================================
+    // Update the screen from the saved state
+    // =========================================================
+    function render() {
+      const joined = Boolean(state.nickname);
+      document.getElementById("join-screen").hidden = joined;
+      document.getElementById("app").hidden = !joined;
+      document.getElementById("tabs").hidden = !joined;
+      if (!joined) return;
+
+      const points = totalPoints();
+      document.getElementById("score").textContent = points + " / " + MAX_POINTS + " pts";
+      document.getElementById("bar-fill").style.width = (points / MAX_POINTS * 100) + "%";
+      document.getElementById("hello").textContent = "Hi, " + state.nickname + "!";
+
+      const doneCount = STEP_IDS.filter(isStepDone).length;
+      document.getElementById("steps-label").textContent = doneCount + " of " + STEP_IDS.length + " steps";
+      document.getElementById("stamp").hidden = points < MAX_POINTS;
+
+      document.querySelectorAll("details.step").forEach(step => {
+        step.classList.toggle("done", isStepDone(step.dataset.step));
+      });
+
+      document.querySelectorAll(".node").forEach(button => {
+        button.classList.toggle("seen", state.nodesSeen.includes(button.dataset.node));
+      });
+
+      // Who wrote the text?
+      if (state.compareGuess) {
+        const right = state.compareGuess === CONFIG.chainedImage;
+        for (const letter of ["A", "B"]) {
+          const pick = document.getElementById("pick-" + letter);
+          pick.disabled = true;
+          pick.classList.toggle("right", letter === CONFIG.chainedImage);
+          pick.classList.toggle("wrong", letter === state.compareGuess && !right);
+        }
+        document.getElementById("compare-reveal").hidden = false;
+        document.getElementById("compare-result").textContent = right
+          ? "Yes! n8n wrote that text, so it's spelled exactly as Gemini wrote it."
+          : "Close! It was Image " + CONFIG.chainedImage + ". Read Image A closely: 'HoHoliday' and 'Showcas a N gnt'.";
+      }
+
+      // Quiz
+      for (const question of QUIZ) {
+        if (!(question.id in state.quiz)) continue;
+        const block = document.querySelector('.q[data-q="' + question.id + '"]');
+        const chosen = state.quiz[question.id];
+        block.querySelectorAll(".opt").forEach(button => {
+          const index = Number(button.dataset.index);
+          button.disabled = true;
+          button.classList.toggle("right", index === question.correct);
+          button.classList.toggle("wrong", index === chosen && chosen !== question.correct);
+        });
+        const explain = block.querySelector(".explain");
+        explain.hidden = false;
+        explain.textContent = (chosen === question.correct ? "Correct! " : "Not quite. ") + question.explain;
+      }
+
+      // Take home checkboxes
+      document.querySelectorAll("input[data-home]").forEach(box => {
+        box.checked = Boolean(state.home[box.dataset.home]);
+      });
+    }
+
+    // =========================================================
+    // Events
+    // =========================================================
+    document.getElementById("join-form").addEventListener("submit", event => {
+      event.preventDefault();
+      const nickname = document.getElementById("nickname").value.trim();
+      const error = document.getElementById("join-error");
+
+      if (!nickname) {
+        error.textContent = "Pick a nickname first.";
+        return;
+      }
+      error.textContent = "";
+      state.nickname = nickname;
+      saveState();
+      render();
+      completeStep("join");
+    });
+
+    const formLink = document.getElementById("form-link");
+    formLink.href = CONFIG.formUrl;
+    formLink.addEventListener("click", () => completeStep("poster"));
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        const name = tab.dataset.tab;
+        document.querySelectorAll(".tab").forEach(other => other.classList.toggle("on", other === tab));
+        document.querySelectorAll(".panel").forEach(panel => {
+          panel.classList.toggle("on", panel.id === "panel-" + name);
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      if (!confirm("Start over? This clears your nickname and points on this phone.")) return;
+      try { localStorage.removeItem(STORAGE_KEY); } catch (error) { /* ignore */ }
+      location.reload();
+    });
+
+    // =========================================================
+    // Start
+    // =========================================================
+    buildNodes();
+    buildCompare();
+    buildFlips();
+    buildQuiz();
+    buildHome();
+    buildFaq();
+    buildResources();
+    render();
+  </script>
+</body>
+</html>

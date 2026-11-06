@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Walk the canvas · Prompt → Poster</title>
+  <meta name="description" content="A visual, step-by-step tour of the Prompt to Poster n8n workflow.">
+  <meta name="theme-color" content="#15111d">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* Same colors and fonts as the attendee portal (index.html) */
+    :root {
+      --ink: #15111d;
+      --ink-2: #1e1829;
+      --ink-3: #2a2238;
+      --line: #3a3050;
+      --coral: #ea4b71;
+      --coral-soft: #ff8fa8;
+      --coral-glow: rgba(234, 75, 113, 0.35);
+      --cream: #fff3ea;
+      --muted: #ab9fbf;
+      --radius: 18px;
+      --display: "Bricolage Grotesque", Georgia, serif;
+      --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+
+      /* One color per phase of the workflow */
+      --ask: #5ec8e5;
+      --write: #f2b05e;
+      --draw: #a08cf7;
+      --finish: #5ad6a8;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(900px 500px at 85% -10%, var(--coral-glow), transparent 60%),
+        radial-gradient(700px 400px at -10% 30%, rgba(255, 143, 168, 0.12), transparent 60%),
+        var(--ink);
+      background-attachment: fixed;
+      color: var(--cream);
+      font-family: var(--display);
+      font-size: 17px;
+      line-height: 1.5;
+      padding-bottom: 110px; /* room for the bottom nav */
+    }
+    /* Bigger text on the projector */
+    @media (min-width: 1100px) { body { font-size: 20px; } }
+
+    a { color: var(--coral-soft); }
+    button { font-family: inherit; }
+    code, .mono { font-family: var(--mono); }
+    code {
+      font-size: 0.85em;
+      background: var(--ink-3);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+    /* ---------- Header + workflow map (sticky, always visible) ---------- */
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(21, 17, 29, 0.85);
+      border-bottom: 1px solid var(--line);
+    }
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0 6px;
+    }
+    .brand { font-weight: 800; letter-spacing: -0.02em; font-size: 18px; text-decoration: none; color: var(--cream); }
+    .brand span { color: var(--coral); }
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* The map scrolls sideways on phones; on the projector all of it fits */
+    .map {
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: 10px 2px 8px;
+      scroll-behavior: smooth;
+    }
+    .map::-webkit-scrollbar { display: none; }
+
+    .mnode {
+      flex: 0 0 auto;
+      min-width: 104px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1.5px solid var(--line);
+      background: var(--ink-2);
+      color: var(--muted);
+      cursor: pointer;
+      text-align: left;
+      font-size: 13px;
+      line-height: 1.25;
+      transition: border-color 0.25s, color 0.25s, box-shadow 0.25s, transform 0.25s;
+    }
+    .mnode .mnum { font-family: var(--mono); font-size: 11px; display: block; color: var(--phase); }
+    .mnode.round {
+      min-width: 0;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+    }
+    .mnode.done { color: var(--cream); border-color: color-mix(in srgb, var(--phase) 45%, var(--line)); }
+    .mnode.done .mnum::after { content: " ✓"; }
+    .mnode.on {
+      color: var(--cream);
+      border-color: var(--phase);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--phase) 22%, transparent), 0 0 24px color-mix(in srgb, var(--phase) 40%, transparent);
+      transform: translateY(-2px);
+    }
+    .mlink {
+      flex: 0 0 22px;
+      height: 2px;
+      background: var(--line);
+      position: relative;
+    }
+    .mlink::after {
+      content: "";
+      position: absolute;
+      right: -1px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-left: 6px solid var(--line);
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+    }
+    .mlink.done { background: var(--muted); }
+    .mlink.done::after { border-left-color: var(--muted); }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      padding: 0 0 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--phase);
+      margin-right: 6px;
+    }
+
+    /* ---------- The current stop ---------- */
+    .stop { padding: 28px 0 8px; animation: rise 0.45s ease both; }
+    .kicker {
+      font-family: var(--mono);
+      font-size: 13px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--phase);
+    }
+    h1 {
+      font-size: clamp(32px, 6vw, 60px);
+      line-height: 1.02;
+      letter-spacing: -0.035em;
+      margin: 8px 0 6px;
+      font-weight: 800;
+    }
+    .node-type { font-family: var(--mono); font-size: 14px; color: var(--muted); margin: 0 0 14px; }
+    .does { font-size: 1.15em; max-width: 46em; margin: 0 0 22px; }
+
+    .panel {
+      background: linear-gradient(180deg, var(--ink-2), rgba(30, 24, 41, 0.6));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      margin: 0 0 16px;
+    }
+    .panel-title {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 14px;
+    }
+
+    /* Flow diagram: box → label → box → label → box */
+    .flow { display: flex; align-items: center; }
+    .box {
+      flex: 0 0 auto;
+      min-width: 150px;
+      max-width: 240px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1.5px solid var(--line);
+      background: var(--ink);
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 0.85em;
+      line-height: 1.3;
+    }
+    .box small { display: block; color: var(--muted); font-family: var(--display); font-size: 0.85em; margin-top: 4px; }
+    .box.active {
+      border-color: var(--phase);
+      color: var(--phase);
+      background: color-mix(in srgb, var(--phase) 10%, var(--ink));
+      box-shadow: 0 0 28px color-mix(in srgb, var(--phase) 30%, transparent);
+    }
+    .box.active small { color: var(--cream); }
+    .link {
+      flex: 1 1 0;
+      min-width: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      color: var(--muted);
+    }
+    .link-label {
+      font-family: var(--mono);
+      font-size: 0.75em;
+      text-align: center;
+      color: var(--cream);
+    }
+    .line { width: 100%; height: 2px; background: var(--muted); position: relative; }
+    .line::after {
+      content: "";
+      position: absolute;
+      right: -2px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-left: 10px solid var(--muted);
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+    }
+
+    /* Two columns on the projector: sample data + where to click */
+    .grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+    .grid .panel { margin: 0; }
+    pre.sample {
+      margin: 0;
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--ink);
+      border: 1px dashed color-mix(in srgb, var(--phase) 55%, var(--line));
+      font-family: var(--mono);
+      font-size: 0.78em;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--cream);
+    }
+    .look { margin: 0; padding-left: 1.2em; }
+    .look li { margin-bottom: 8px; }
+
+    .key {
+      margin-top: 16px;
+      padding: 16px 20px;
+      border-radius: 14px;
+      border-left: 4px solid var(--phase);
+      background: color-mix(in srgb, var(--phase) 9%, var(--ink-2));
+    }
+    .key strong { color: var(--phase); }
+
+    .takeaways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+    .takeaways .panel { margin: 0; }
+    .takeaways h3 { margin: 0 0 6px; font-size: 1.05em; color: var(--phase); }
+    .takeaways p { margin: 0; color: var(--muted); }
+
+    .btn {
+      display: inline-block;
+      background: var(--coral);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 14px 22px;
+      border-radius: 999px;
+      margin-top: 18px;
+    }
+
+    /* ---------- Bottom navigation (always visible) ---------- */
+    .nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      background: rgba(21, 17, 29, 0.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav .wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      height: 72px;
+    }
+    .nav button {
+      min-width: 110px;
+      min-height: 48px;
+      padding: 0 20px;
+      border-radius: 999px;
+      border: 1.5px solid var(--line);
+      background: var(--ink-2);
+      color: var(--cream);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .nav button.next { background: var(--coral); border-color: var(--coral); color: #fff; }
+    .nav button:disabled { opacity: 0.35; cursor: default; }
+    .counter { font-family: var(--mono); font-size: 13px; color: var(--muted); text-align: center; }
+    .counter .hint { display: block; font-size: 11px; opacity: 0.7; }
+
+    /* ---------- Phones ---------- */
+    @media (max-width: 760px) {
+      .grid, .takeaways { grid-template-columns: 1fr; }
+      .panel { padding: 18px; }
+
+      /* Flow turns vertical: boxes stacked, arrows point down */
+      .flow { flex-direction: column; align-items: stretch; }
+      .box { max-width: none; }
+      .link { padding: 6px 0; gap: 4px; }
+      .line { width: 2px; height: 28px; }
+      .line::after {
+        right: auto;
+        top: auto;
+        bottom: -2px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 10px solid var(--muted);
+        border-bottom: 0;
+      }
+      .counter .hint { display: none; }
+      .nav button { min-width: 92px; }
+    }
+
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="top">
+    <div class="wrap">
+      <div class="top-row">
+        <a class="brand" href="index.html">Prompt <span>→</span> Poster</a>
+        <div class="eyebrow">Walk the canvas</div>
+      </div>
+      <nav class="map" id="map" aria-label="Workflow map"></nav>
+      <div class="legend" id="legend"></div>
+    </div>
+  </header>
+
+  <main class="wrap" id="stop"></main>
+
+  <nav class="nav" aria-label="Tour navigation">
+    <div class="wrap">
+      <button type="button" id="back">← Back</button>
+      <div class="counter" id="counter"></div>
+      <button type="button" class="next" id="next">Next →</button>
+    </div>
+  </nav>
+
+  <script>
+    // =========================================================
+    // CONTENT: edit the text here. One object per stop.
+    // =========================================================
+    const FORM_URL = "https://yosola.app.n8n.cloud/form/prompt-to-poster";
+
+    const PHASES = {
+      ask:    { label: "Ask",    color: "var(--ask)" },
+      write:  { label: "Write",  color: "var(--write)" },
+      draw:   { label: "Draw",   color: "var(--draw)" },
+      finish: { label: "Finish", color: "var(--finish)" }
+    };
+
+    // flow = [box, "arrow label", box, "arrow label", box, ...]
+    // A box is { name, sub, active }.
+    const STOPS = [
+      {
+        id: "start",
+        short: "START",
+        phase: "ask",
+        kicker: "The big picture",
+        title: "One model writes the prompt for another.",
+        does: "People describe a <em>vibe</em>. Image models work best with <em>art direction</em>. In the next 8 stops we follow one talk idea through the real n8n workflow, node by node, until it becomes a poster.",
+        flowTitle: "What the workflow does, in one line",
+        flow: [
+          { name: "you", sub: "a talk idea + a vibe" },
+          "\"retro\"",
+          { name: "Gemini text", sub: "the art director", active: true },
+          "art direction",
+          { name: "Gemini image", sub: "draws the background" },
+          "picture",
+          { name: "n8n", sub: "adds text, saves it" }
+        ],
+        key: "<strong>Prompt chaining:</strong> the output of model 1 becomes the input of model 2. n8n is the glue, and it lets us see every step in between."
+      },
+      {
+        id: "form",
+        short: "Form",
+        phase: "ask",
+        name: "Talk idea form",
+        type: "Form Trigger · starts the workflow",
+        does: "Gives everyone a simple web form. Each time someone submits it, the workflow runs once with their answers.",
+        flow: [
+          { name: "you", sub: "on your phone" },
+          "title, topic, vibe",
+          { name: "Talk idea form", sub: "Form Trigger", active: true },
+          "3 fields",
+          { name: "Gemini - write copy", sub: "next node" }
+        ],
+        sampleTitle: "Output · what this node passes on",
+        sample: '{\n  "Talk title": "Teaching Robots to Salsa",\n  "Topic": "Reinforcement learning for motion, explained with dance",\n  "Vibe": "retro"\n}',
+        look: [
+          "Open the node and find <b>Form Fields</b>: Talk title, Topic, Vibe.",
+          "The <b>Vibe</b> dropdown has 5 options: retro, minimal, cosmic, playful, bold.",
+          "The <b>Production URL</b> is the link behind the QR code."
+        ],
+        key: "<strong>Every workflow starts with a trigger.</strong> Here it's a form. It could also be a schedule, a webhook, or a new email."
+      },
+      {
+        id: "write",
+        short: "Write copy",
+        phase: "write",
+        name: "Gemini - write copy",
+        type: "HTTP Request · Gemini 3.8 Flash",
+        does: "Sends the talk idea to Gemini with art-director instructions. Gemini answers with three things: a headline, a tagline, and an <code>image_prompt</code> for the next model.",
+        flow: [
+          { name: "Talk idea form", sub: "previous node" },
+          "title, topic, vibe",
+          { name: "Gemini - write copy", sub: "one model call", active: true },
+          "JSON answer",
+          { name: "Read Gemini copy", sub: "next node" }
+        ],
+        sampleTitle: "Output · Gemini's answer",
+        sample: '{\n  "headline": "Teaching Robots to Salsa",\n  "tagline": "How reinforcement learning taught a robot to find the beat.",\n  "image_prompt": "A chrome 1970s-style robot mid-spin on a glowing checkered dance floor, retro poster illustration, tangerine, mustard and teal... no text, no logos, no people."\n}',
+        look: [
+          "In <b>Body</b>, the <code>systemInstruction</code>: the art-director rules (no text, no people, 60 to 100 words).",
+          "Also in Body, the <code>responseSchema</code>: the exact JSON shape Gemini must return.",
+          "The <b>URL</b> holds the model name. Swapping models means editing one line."
+        ],
+        key: "<strong>Link 1 of the chain.</strong> Gemini doesn't draw anything. It writes the prompt that the image model will read."
+      },
+      {
+        id: "read",
+        short: "Read copy",
+        phase: "write",
+        name: "Read Gemini copy",
+        type: "Edit Fields (Set) · tidy up the answer",
+        does: "Gemini's answer arrives wrapped in extra layers. This node pulls out four clean fields: headline, tagline, image_prompt, and vibe.",
+        flow: [
+          { name: "Gemini - write copy", sub: "previous node" },
+          "raw answer",
+          { name: "Read Gemini copy", sub: "Edit Fields", active: true },
+          "image_prompt",
+          { name: "Gemini image", sub: "next node" }
+        ],
+        sampleTitle: "Expression · how the headline is read",
+        sample: "{{ JSON.parse(\n  $json.candidates[0].content.parts[0].text\n).headline }}",
+        look: [
+          "Each of the 4 fields is an <b>expression</b> (the green <code>{{ }}</code> text).",
+          "Compare the <b>INPUT</b> panel (messy) with the <b>OUTPUT</b> panel (clean).",
+          "<code>vibe</code> comes from the form, not from Gemini. We use it later in the file name."
+        ],
+        key: "<strong>Why the schema matters:</strong> if Gemini added markdown or extra words, <code>JSON.parse</code> would fail right here and the chain would stop."
+      },
+      {
+        id: "draw",
+        short: "Draw",
+        phase: "draw",
+        name: "Gemini image - draw background",
+        type: "HTTP Request · Gemini 3.1 Flash Image",
+        does: "Sends <em>only</em> the <code>image_prompt</code> to the image model. It draws a 3:4 background with no words in it.",
+        flow: [
+          { name: "Read Gemini copy", sub: "previous node" },
+          "image_prompt",
+          { name: "Gemini image", sub: "draws the background", active: true },
+          "image as text (base64)",
+          { name: "Pick image data", sub: "next node" }
+        ],
+        sampleTitle: "Request body · the chain in one line",
+        sample: '{\n  "contents": [{\n    "role": "user",\n    "parts": [{ "text": {{ $json.image_prompt }} }]\n  }],\n  "generationConfig": {\n    "responseModalities": ["TEXT", "IMAGE"],\n    "imageConfig": { "aspectRatio": "3:4" }\n  }\n}',
+        look: [
+          "In <b>Body</b>, find <code>$json.image_prompt</code>. That one expression is the whole chain.",
+          "<code>aspectRatio: 3:4</code> makes every poster the same shape.",
+          "In <b>OUTPUT</b>, the image is a very long string of letters. That's base64."
+        ],
+        key: "<strong>Link 2 of the chain.</strong> The second model reads what the first one wrote. You never typed this prompt."
+      },
+      {
+        id: "pick",
+        short: "Pick image",
+        phase: "draw",
+        name: "Pick image data",
+        type: "Edit Fields (Set) · find the picture",
+        does: "The answer can hold some text and the image. This node finds the part that has the image and keeps only that.",
+        flow: [
+          { name: "Gemini image", sub: "previous node" },
+          "text + image",
+          { name: "Pick image data", sub: "Edit Fields", active: true },
+          "image_base64",
+          { name: "Base64 to image", sub: "next node" }
+        ],
+        sampleTitle: "Expression · find the part with inlineData",
+        sample: "{{ $json.candidates[0].content.parts\n     .find(part => part.inlineData)\n     .inlineData.data }}",
+        look: [
+          "One field: <code>image_base64</code>.",
+          "If a safety filter blocks the image, <b>this</b> is the node that turns red. It's the first place to look."
+        ],
+        key: "<strong>Small nodes, clear errors.</strong> Because this step is on its own, a failure tells you exactly what went wrong: no image came back."
+      },
+      {
+        id: "file",
+        short: "To file",
+        phase: "draw",
+        name: "Base64 to image",
+        type: "Convert to File · text → PNG",
+        does: "Turns the long base64 text into a real PNG file, called <code>card.png</code>, that the next nodes can edit and upload.",
+        flow: [
+          { name: "Pick image data", sub: "previous node" },
+          "image_base64",
+          { name: "Base64 to image", sub: "Convert to File", active: true },
+          "card.png",
+          { name: "Add headline and tagline", sub: "next node" }
+        ],
+        sampleTitle: "Output · now it's a file",
+        sample: "Binary: data\n  fileName: card.png\n  mimeType: image/png",
+        look: [
+          "In <b>OUTPUT</b>, switch to the <b>Binary</b> tab and click <b>View</b>: you'll see the background.",
+          "There's no text on it yet. That's on purpose."
+        ],
+        key: "<strong>JSON vs. binary:</strong> n8n carries data (JSON) and files (binary) side by side. This node moves the image from one to the other."
+      },
+      {
+        id: "edit",
+        short: "Add text",
+        phase: "finish",
+        name: "Add headline and tagline",
+        type: "Edit Image · n8n writes the words",
+        does: "Resizes the picture, draws a dark band at the bottom, and writes the headline and tagline on it.",
+        flow: [
+          { name: "Base64 to image", sub: "previous node" },
+          "card.png + headline + tagline",
+          { name: "Add headline and tagline", sub: "Edit Image", active: true },
+          "finished poster",
+          { name: "Save to gallery", sub: "next node" }
+        ],
+        sampleTitle: "What it does · 4 operations",
+        sample: "1. Resize        896 × 1280\n2. Draw          dark band, y 930 → 1280\n3. Text          headline, size 56, white\n4. Text          tagline,  size 30, light grey",
+        look: [
+          "<b>Operations</b> lists the 4 steps, in order.",
+          "The text comes from <code>$('Read Gemini copy')</code>: a node 4 steps back."
+        ],
+        key: "<strong>Why n8n writes the text, not the AI:</strong> the headline is always spelled exactly right, and every card has the same layout."
+      },
+      {
+        id: "save",
+        short: "Save",
+        phase: "finish",
+        name: "Save to gallery",
+        type: "Google Drive · upload the file",
+        does: "Uploads the finished card to the shared <b>DevFest Gallery</b> folder, with a name made from the time and the vibe.",
+        flow: [
+          { name: "Add headline and tagline", sub: "previous node" },
+          "finished poster",
+          { name: "Save to gallery", sub: "Google Drive", active: true },
+          "file name",
+          { name: "DevFest Gallery", sub: "shared folder" }
+        ],
+        sampleTitle: "File name · built with an expression",
+        sample: "{{ $now.toFormat('yyyyMMdd-HHmmss') }}-{{ vibe }}.png\n\n→ 20261107-101530-retro.png",
+        look: [
+          "<b>File Name</b> uses <code>$now</code>, so two cards never share a name.",
+          "<b>Parent Folder</b> is the gallery. The host reviews cards there before they go on the big screen."
+        ],
+        key: "<strong>The end of the chain.</strong> About 30 seconds after you tapped Submit, your poster is here."
+      },
+      {
+        id: "finish",
+        short: "DONE",
+        phase: "finish",
+        kicker: "What the whole workflow accomplishes",
+        title: "From a vibe to a poster, with no one in the middle.",
+        does: "8 nodes, 2 AI models, 1 form. Each node does one small job and passes its output to the next, like a relay.",
+        flowTitle: "The whole chain",
+        flow: [
+          { name: "Ask", sub: "Form" },
+          "idea + vibe",
+          { name: "Write", sub: "Gemini text + Read copy" },
+          "image_prompt",
+          { name: "Draw", sub: "Gemini image + Pick + To file" },
+          "background",
+          { name: "Finish", sub: "Add text + Save", active: true }
+        ],
+        takeaways: [
+          { title: "Chain the models", text: "Model 1 writes the prompt for model 2. You give a vibe; the image model gets art direction." },
+          { title: "Force the shape", text: "A response schema makes Gemini return clean JSON, so the next node never breaks." },
+          { title: "Let n8n do the glue", text: "Form, auth, files, text on the image, Drive: one node each, and you can see the data between every step." }
+        ],
+        cta: true
+      }
+    ];
+
+    // =========================================================
+    // STATE: which stop is on screen (kept in the URL, e.g. tutorial.html#3)
+    // =========================================================
+    let current = 0;
+
+    function stopFromHash() {
+      const number = parseInt(window.location.hash.replace("#", ""), 10);
+      if (Number.isNaN(number)) return 0;
+      return Math.min(Math.max(number, 0), STOPS.length - 1);
+    }
+
+    function goTo(index) {
+      const safeIndex = Math.min(Math.max(index, 0), STOPS.length - 1);
+      // Changing the hash triggers "hashchange", which calls render()
+      if (safeIndex === current && window.location.hash === "#" + safeIndex) return;
+      window.location.hash = String(safeIndex);
+    }
+
+    // =========================================================
+    // DRAWING
+    // =========================================================
+    function phaseColor(phaseId) {
+      return PHASES[phaseId].color;
+    }
+
+    function buildLegend() {
+      const legend = document.getElementById("legend");
+      for (const phaseId of Object.keys(PHASES)) {
+        const item = document.createElement("span");
+        item.style.setProperty("--phase", phaseColor(phaseId));
+        item.textContent = PHASES[phaseId].label;
+        legend.appendChild(item);
+      }
+    }
+
+    function buildMap() {
+      const map = document.getElementById("map");
+      STOPS.forEach((stop, index) => {
+        if (index > 0) {
+          const link = document.createElement("span");
+          link.className = "mlink";
+          link.dataset.index = String(index);
+          map.appendChild(link);
+        }
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.index = String(index);
+        button.style.setProperty("--phase", phaseColor(stop.phase));
+        const isEnd = index === 0 || index === STOPS.length - 1;
+        if (isEnd) {
+          button.className = "mnode round";
+          button.textContent = stop.short;
+        } else {
+          button.className = "mnode";
+          button.innerHTML = '<span class="mnum">' + String(index).padStart(2, "0") + "</span>" + stop.short;
+        }
+        button.addEventListener("click", () => goTo(index));
+        map.appendChild(button);
+      });
+    }
+
+    function updateMap() {
+      for (const item of document.querySelectorAll("#map [data-index]")) {
+        const index = Number(item.dataset.index);
+        item.classList.toggle("on", index === current && item.tagName === "BUTTON");
+        item.classList.toggle("done", item.tagName === "BUTTON" ? index < current : index <= current);
+        if (index === current && item.tagName === "BUTTON") {
+          item.setAttribute("aria-current", "step");
+          // Keep the active node visible on small screens
+          item.scrollIntoView({ block: "nearest", inline: "center" });
+        } else {
+          item.removeAttribute("aria-current");
+        }
+      }
+    }
+
+    function flowHtml(flow) {
+      let html = '<div class="flow">';
+      for (const part of flow) {
+        if (typeof part === "string") {
+          html += '<div class="link"><span class="link-label">' + part + '</span><span class="line"></span></div>';
+        } else {
+          html += '<div class="box' + (part.active ? " active" : "") + '">' + part.name +
+                  (part.sub ? "<small>" + part.sub + "</small>" : "") + "</div>";
+        }
+      }
+      return html + "</div>";
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function stopHtml(stop, index) {
+      const isNode = Boolean(stop.name);
+      const kicker = isNode ? "Node " + index + " of 8 · " + PHASES[stop.phase].label : stop.kicker;
+      let html = '<div class="kicker">' + kicker + "</div>";
+      html += "<h1>" + (isNode ? stop.name : stop.title) + "</h1>";
+      if (isNode) html += '<p class="node-type">' + stop.type + "</p>";
+      html += '<p class="does">' + stop.does + "</p>";
+
+      html += '<div class="panel"><p class="panel-title">' + (stop.flowTitle || "In → this node → out") + "</p>" +
+              flowHtml(stop.flow) + "</div>";
+
+      if (stop.sample) {
+        html += '<div class="grid">';
+        html += '<div class="panel"><p class="panel-title">' + stop.sampleTitle + "</p>" +
+                '<pre class="sample">' + escapeHtml(stop.sample) + "</pre></div>";
+        html += '<div class="panel"><p class="panel-title">In n8n, look for</p><ul class="look">' +
+                stop.look.map(item => "<li>" + item + "</li>").join("") + "</ul></div>";
+        html += "</div>";
+      }
+
+      if (stop.takeaways) {
+        html += '<div class="takeaways">' + stop.takeaways.map(item =>
+          '<div class="panel"><h3>' + item.title + "</h3><p>" + item.text + "</p></div>").join("") + "</div>";
+      }
+
+      if (stop.key) html += '<div class="key">' + stop.key + "</div>";
+
+      if (stop.cta) {
+        html += '<a class="btn" href="' + FORM_URL + '" target="_blank" rel="noopener">Make another poster 🎨</a>';
+      }
+      return html;
+    }
+
+    function render() {
+      current = stopFromHash();
+      const stop = STOPS[current];
+
+      const main = document.getElementById("stop");
+      main.innerHTML = '<section class="stop">' + stopHtml(stop, current) + "</section>";
+      main.style.setProperty("--phase", phaseColor(stop.phase));
+
+      document.getElementById("counter").innerHTML =
+        "Stop " + current + " / " + (STOPS.length - 1) + '<span class="hint">← → keys work too</span>';
+      document.getElementById("back").disabled = current === 0;
+      const next = document.getElementById("next");
+      next.disabled = current === STOPS.length - 1;
+      next.textContent = current === 0 ? "Start →" : "Next →";
+
+      updateMap();
+      window.scrollTo({ top: 0 });
+    }
+
+    // =========================================================
+    // START
+    // =========================================================
+    buildLegend();
+    buildMap();
+    render();
+
+    window.addEventListener("hashchange", render);
+    document.getElementById("back").addEventListener("click", () => goTo(current - 1));
+    document.getElementById("next").addEventListener("click", () => goTo(current + 1));
+    document.addEventListener("keydown", event => {
+      if (event.key === "ArrowRight") goTo(current + 1);
+      if (event.key === "ArrowLeft") goTo(current - 1);
+    });
+  </script>
+</body>
+</html>

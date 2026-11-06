@@ -1,0 +1,448 @@
+{
+  "name": "Prompt to Poster (DevFest 2026)",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Prompt to Poster",
+        "formDescription": "Pitch a talk idea, pick a vibe, and get a promo card in seconds. Please don't enter names or personal info.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Talk title",
+              "placeholder": "Teaching Robots to Salsa",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Topic",
+              "fieldType": "textarea",
+              "placeholder": "What is the talk about? One or two sentences.",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Vibe",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "retro"
+                  },
+                  {
+                    "option": "minimal"
+                  },
+                  {
+                    "option": "cosmic"
+                  },
+                  {
+                    "option": "playful"
+                  },
+                  {
+                    "option": "bold"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false,
+          "buttonLabel": "Make my poster 🎨",
+          "path": "prompt-to-poster"
+        }
+      },
+      "name": "Talk idea form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "3001952f-0efa-47e3-98a8-5be880e22a83",
+      "id": "d4dc0a95-aa26-4813-b48b-fafbbdc43cb2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://aiplatform.googleapis.com/v1/projects/gdg-workflow-512920/locations/global/publishers/google/models/gemini-3.8-flash:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"systemInstruction\": {\n    \"parts\": [{ \"text\": \"You are an art director who designs promo cards for tech conference talks, and the safety reviewer for a family-friendly tech event. First decide if the idea is appropriate. Set is_appropriate to false if the title or topic includes, mentions, or hints at: politics of any kind (elections, voting, candidates, politicians, political parties, government policy, protests, or the recent mayoral election); hate, slurs, or insults about any person or group; harassment or mocking of real people; sexual content; violence, weapons, or self-harm; drugs; or anything else not suitable for a family tech event. Treat misspellings, symbols, and coded words (for example tr*mp or p0litics) the same as the real words. When in doubt, set is_appropriate to false. reason: one short sentence explaining your decision. If is_appropriate is false, set headline, tagline, and image_prompt to empty strings. If is_appropriate is true, write: headline: a punchy headline, 8 words max. It can be the title or a sharper version of it. tagline: one sentence, 15 words max, that makes people want to attend. image_prompt: art direction for an image model, 60 to 100 words. Describe the subject, art style, color palette, lighting, and composition. Match the vibe. Keep the main subject in the upper two thirds of the frame. Rules for image_prompt: no text, letters, numbers, or words in the image. No logos or brand marks. No people at all; use objects, robots, animals, landscapes, or abstract shapes instead. Keep it safe for a family audience.\" }]\n  },\n  \"contents\": [{\n    \"role\": \"user\",\n    \"parts\": [{ \"text\": {{ JSON.stringify('Talk title: ' + $json['Talk title'] + '\\nTopic: ' + $json['Topic'] + '\\nVibe: ' + $json['Vibe']) }} }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.9,\n    \"responseMimeType\": \"application/json\",\n    \"responseSchema\": {\n      \"type\": \"OBJECT\",\n      \"properties\": {\n        \"is_appropriate\": { \"type\": \"BOOLEAN\", \"description\": \"false if the idea breaks any safety rule\" },\n        \"reason\": { \"type\": \"STRING\", \"description\": \"One short sentence explaining the decision\" },\n        \"headline\": { \"type\": \"STRING\", \"description\": \"8 words max. Empty if not appropriate.\" },\n        \"tagline\": { \"type\": \"STRING\", \"description\": \"15 words max. Empty if not appropriate.\" },\n        \"image_prompt\": { \"type\": \"STRING\", \"description\": \"Art direction for the image model. No text, logos, or people. Empty if not appropriate.\" }\n      },\n      \"required\": [\"is_appropriate\", \"reason\", \"headline\", \"tagline\", \"image_prompt\"],\n      \"propertyOrdering\": [\"is_appropriate\", \"reason\", \"headline\", \"tagline\", \"image_prompt\"]\n    }\n  }\n}",
+        "options": {}
+      },
+      "name": "Gemini - write copy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "488adafe-a65a-480b-815e-0875aaed075b"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "headline",
+              "type": "string",
+              "value": "={{ JSON.parse($json.candidates[0].content.parts[0].text).headline }}"
+            },
+            {
+              "id": "a2",
+              "name": "tagline",
+              "type": "string",
+              "value": "={{ JSON.parse($json.candidates[0].content.parts[0].text).tagline }}"
+            },
+            {
+              "id": "a3",
+              "name": "image_prompt",
+              "type": "string",
+              "value": "={{ JSON.parse($json.candidates[0].content.parts[0].text).image_prompt }}"
+            },
+            {
+              "id": "a4",
+              "name": "vibe",
+              "type": "string",
+              "value": "={{ $('Talk idea form').item.json['Vibe'] }}"
+            },
+            {
+              "id": "96dfcb11-1dd9-4877-85f3-18820f2ab211",
+              "name": "is_appropriate",
+              "value": "={{ JSON.parse($json.candidates[0].content.parts[0].text).is_appropriate }}",
+              "type": "boolean"
+            },
+            {
+              "id": "e328e86c-d95a-4876-b3ae-ccc46ddeff1d",
+              "name": "reason",
+              "value": "={{ JSON.parse($json.candidates[0].content.parts[0].text).reason }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Read Gemini copy",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        0
+      ],
+      "id": "ee19b0b4-ac32-4aa2-b925-1b0d0334c992"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://aiplatform.googleapis.com/v1/projects/gdg-workflow-512920/locations/global/publishers/google/models/gemini-3.1-flash-image:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"role\": \"user\",\n    \"parts\": [{ \"text\": {{ JSON.stringify($json.image_prompt) }} }]\n  }],\n  \"generationConfig\": {\n    \"responseModalities\": [\"TEXT\", \"IMAGE\"],\n    \"imageConfig\": { \"aspectRatio\": \"3:4\" }\n  }\n}",
+        "options": {}
+      },
+      "name": "Gemini image - draw background",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "450e9e3f-b55e-425a-b6e3-15a40c2fb5d7"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "image_base64",
+              "type": "string",
+              "value": "={{ $json.candidates[0].content.parts.find(part => part.inlineData).inlineData.data }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Pick image data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1328,
+        0
+      ],
+      "id": "b48d6f88-446b-4acf-8db1-706ed9ccf4de"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "image_base64",
+        "options": {
+          "fileName": "card.png",
+          "mimeType": "image/png"
+        }
+      },
+      "name": "Base64 to image",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1552,
+        0
+      ],
+      "id": "fe893c99-6e15-45c3-be4b-34f0e0a3f775"
+    },
+    {
+      "parameters": {
+        "operation": "multiStep",
+        "operations": {
+          "operations": [
+            {
+              "operation": "resize",
+              "width": 896,
+              "height": 1280,
+              "resizeOption": "ignoreAspectRatio"
+            },
+            {
+              "operation": "draw",
+              "color": "#111111",
+              "startPositionX": 0,
+              "startPositionY": 930,
+              "endPositionX": 896,
+              "endPositionY": 1280
+            },
+            {
+              "operation": "text",
+              "text": "={{ $('Read Gemini copy').item.json.headline }}",
+              "fontSize": 56,
+              "fontColor": "#FFFFFF",
+              "positionX": 48,
+              "positionY": 1010,
+              "lineLength": 26
+            },
+            {
+              "operation": "text",
+              "text": "={{ $('Read Gemini copy').item.json.tagline }}",
+              "fontSize": 30,
+              "fontColor": "#D9D9D9",
+              "positionX": 48,
+              "positionY": 1180,
+              "lineLength": 48
+            }
+          ]
+        },
+        "options": {
+          "format": "png"
+        }
+      },
+      "name": "Add headline and tagline",
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        0
+      ],
+      "id": "82c5bbcf-fb69-4937-9b00-aee1c1ed8ae0"
+    },
+    {
+      "parameters": {
+        "name": "={{ $now.toFormat('yyyyMMdd-HHmmss') }}-{{ $('Read Gemini copy').item.json.vibe }}.png",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "16WZoW6IE1fGLYBw9RlAHVnslFquZqyhG"
+        },
+        "options": {}
+      },
+      "name": "Save to gallery",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2000,
+        0
+      ],
+      "id": "d644e5e4-cac6-40a1-8af7-84fbc06183ff"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "34f15c3d-b808-435c-a4d7-4a67f8a92db9",
+              "leftValue": "={{ /\\b(?:fuck|shit|bitch|asshole|bastard|dick|cunt|porn|idiot|moron|retard|retarded|loser|nazi|fag|faggot|dyke|tranny|nigger|nigga|chink|spic|wetback|kike|beaner|puta|puto|mierda|pendejo|cabron|verga|chinga|chingada|culero|joder|maricon|marica|sudaca|naco|election|elect|vote|voter|voting|ballot|mayor|mayoral|democrat|republican|gop|maga|trump|biden|harris|liberal|conservative|socialist|communist|president|senator|congress|campaign|candidate|politics|political|politician|abortion|protest|elecciones|eleccion|votar|voto|votacion|alcalde|alcaldesa|alcaldia|politica|politico|candidato|candidata|presidente)s?\\b/i.test(($json['Talk title'] + ' ' + $json['Topic']).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        0
+      ],
+      "id": "9b4898c8-7d42-40f2-8bfa-57ccf0f19e8d",
+      "name": "Blocked words?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "88df7a60-19f7-4fca-9492-aa1b01be86bf",
+              "leftValue": "={{ $json.is_appropriate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        896,
+        0
+      ],
+      "id": "c7fd9c62-a1e8-40f2-b1e1-a1847c248a3a",
+      "name": "Is it appropriate?"
+    }
+  ],
+  "connections": {
+    "Talk idea form": {
+      "main": [
+        [
+          {
+            "node": "Blocked words?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - write copy": {
+      "main": [
+        [
+          {
+            "node": "Read Gemini copy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Gemini copy": {
+      "main": [
+        [
+          {
+            "node": "Is it appropriate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini image - draw background": {
+      "main": [
+        [
+          {
+            "node": "Pick image data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick image data": {
+      "main": [
+        [
+          {
+            "node": "Base64 to image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Base64 to image": {
+      "main": [
+        [
+          {
+            "node": "Add headline and tagline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add headline and tagline": {
+      "main": [
+        [
+          {
+            "node": "Save to gallery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blocked words?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Gemini - write copy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is it appropriate?": {
+      "main": [
+        [
+          {
+            "node": "Gemini image - draw background",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

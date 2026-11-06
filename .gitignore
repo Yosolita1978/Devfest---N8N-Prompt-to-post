@@ -1,0 +1,6 @@
+# Google Cloud service account keys must never be committed.
+# Block every JSON file, then allow the n8n workflow export back in.
+*.json
+!workflow/*.json
+
+.DS_Store
