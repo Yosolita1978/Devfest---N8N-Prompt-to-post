@@ -4,6 +4,8 @@
 
 A hands-on session for **GDG Seattle DevFest, November 7, 2026**, hosted by the Seattle n8n Ambassadors.
 
+**👉 Course portal: [n8ndevfest2026.vercel.app](https://n8ndevfest2026.vercel.app/)**. Open it on your phone to join the workshop, make a poster, and walk through the workflow step by step.
+
 ![Example card: two retro robots dancing salsa](docs/images/example-card.png)
 
 ## What it does
@@ -43,7 +45,7 @@ Rejected ideas stop quietly: the participant still sees the form's thank-you mes
 | [`docs/troubleshooting.md`](docs/troubleshooting.md) | Every error we hit while building this, and how to fix it |
 | [`docs/decisions-and-findings.md`](docs/decisions-and-findings.md) | Why it's built this way, and what we learned about the models |
 | [`docs/workshop-runbook.md`](docs/workshop-runbook.md) | The host's plan for the 45-minute session |
-
+| [`docs/index.html`](docs/index.html), [`docs/tutorial.html`](docs/tutorial.html) | The course portal and the "Walk the canvas" tour, deployed to [n8ndevfest2026.vercel.app](https://n8ndevfest2026.vercel.app/) from the `docs` folder |
 ## Quick start
 
 You need a Google Cloud project with billing enabled, and an n8n instance (n8n Cloud works).
