@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gallery · Prompt → Poster</title>
+  <meta name="description" content="Posters made by attendees of the Prompt to Poster workshop at GDG Seattle DevFest 2026.">
+  <meta name="theme-color" content="#15111d">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* Same colors and fonts as the attendee portal (index.html) */
+    :root {
+      --ink: #15111d;
+      --ink-2: #1e1829;
+      --ink-3: #2a2238;
+      --line: #3a3050;
+      --coral: #ea4b71;
+      --coral-soft: #ff8fa8;
+      --coral-glow: rgba(234, 75, 113, 0.35);
+      --cream: #fff3ea;
+      --muted: #ab9fbf;
+      --display: "Bricolage Grotesque", Georgia, serif;
+      --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(900px 500px at 85% -10%, var(--coral-glow), transparent 60%),
+        radial-gradient(700px 400px at -10% 30%, rgba(255, 143, 168, 0.12), transparent 60%),
+        var(--ink);
+      background-attachment: fixed;
+      color: var(--cream);
+      font-family: var(--display);
+      font-size: 17px;
+      line-height: 1.5;
+      padding-bottom: 64px;
+    }
+
+    a { color: var(--coral-soft); }
+
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+
+    /* ---------- Header ---------- */
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(21, 17, 29, 0.78);
+      border-bottom: 1px solid var(--line);
+    }
+    .top .wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+    .brand { font-weight: 800; letter-spacing: -0.02em; font-size: 18px; text-decoration: none; color: var(--cream); }
+    .brand span { color: var(--coral); }
+    .count {
+      font-family: var(--mono);
+      font-size: 13px;
+      border: 1px solid var(--coral);
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(234, 75, 113, 0.12);
+    }
+
+    .hero { padding: 36px 0 20px; }
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--coral-soft);
+    }
+    h1 {
+      font-size: clamp(44px, 10vw, 76px);
+      line-height: 0.92;
+      letter-spacing: -0.04em;
+      margin: 10px 0 14px;
+      font-weight: 800;
+    }
+    .lede { color: var(--muted); max-width: 34em; margin: 0; }
+
+    /* ---------- Poster grid ---------- */
+    /* 2 columns on phones, more on wide screens (projector) */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
+      margin-top: 24px;
+    }
+    @media (min-width: 900px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+    }
+    .poster {
+      display: block;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: var(--ink-2);
+      aspect-ratio: 896 / 1280;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .poster:hover { transform: translateY(-3px); border-color: var(--coral); }
+    .poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .poster.new { animation: pop 0.6s cubic-bezier(.2, 1.4, .4, 1) both; }
+    @keyframes pop { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+
+    .message {
+      margin-top: 32px;
+      padding: 28px;
+      border: 1px dashed var(--line);
+      border-radius: 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .foot {
+      margin-top: 28px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="index.html">Prompt <span>→</span> Poster</a>
+      <span class="count" id="count">…</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">GDG Seattle DevFest · Nov 7, 2026</div>
+      <h1>The gallery</h1>
+      <p class="lede">Every poster here started as a talk idea typed on a phone, then went through two Gemini models chained in n8n. New posters appear on their own.</p>
+    </section>
+
+    <div class="grid" id="grid"></div>
+    <div class="message" id="message" hidden></div>
+
+    <p class="foot">Tap a poster to see it full size. <a href="index.html">← Back to the workshop</a></p>
+  </main>
+
+  <script>
+    // =========================================================
+    // CONFIG
+    // =========================================================
+    // The "Poster gallery API" workflow in n8n. It lists the posters in the
+    // Drive "Approved" folder: { posters: [{ id, name, created }] }, newest first.
+    const GALLERY_API = "https://yosola.app.n8n.cloud/webhook/poster-gallery";
+    // How often to check for new posters
+    const REFRESH_SECONDS = 30;
+
+    const grid = document.getElementById("grid");
+    const message = document.getElementById("message");
+    const count = document.getElementById("count");
+
+    // Poster ids already on the page, so a refresh only adds the new ones
+    const shown = new Set();
+
+    // Drive serves a small JPEG at w400 (about 90 KB) and the full image at the plain URL
+    function thumbnailUrl(id) { return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w400"; }
+    function fullUrl(id) { return "https://lh3.googleusercontent.com/d/" + encodeURIComponent(id); }
+
+    function makePoster(poster, isNew) {
+      const link = document.createElement("a");
+      link.className = isNew ? "poster new" : "poster";
+      link.dataset.id = poster.id;
+      link.href = fullUrl(poster.id);
+      link.target = "_blank";
+      link.rel = "noopener";
+      const image = document.createElement("img");
+      image.src = thumbnailUrl(poster.id);
+      image.alt = "Poster made at the workshop";
+      image.loading = "lazy";
+      link.appendChild(image);
+      return link;
+    }
+
+    function showMessage(text) {
+      message.textContent = text;
+      message.hidden = false;
+    }
+
+    async function loadPosters() {
+      try {
+        const response = await fetch(GALLERY_API, { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const data = await response.json();
+        const posters = Array.isArray(data.posters) ? data.posters : [];
+
+        // Remove posters that were taken out of the Approved folder
+        const currentIds = new Set(posters.map(poster => poster.id));
+        grid.querySelectorAll(".poster").forEach(link => {
+          if (!currentIds.has(link.dataset.id)) {
+            shown.delete(link.dataset.id);
+            link.remove();
+          }
+        });
+
+        const firstLoad = shown.size === 0;
+        // The list is newest first. Walk it backwards so each new poster ends up at the top.
+        for (let index = posters.length - 1; index >= 0; index--) {
+          const poster = posters[index];
+          if (shown.has(poster.id)) continue;
+          shown.add(poster.id);
+          grid.prepend(makePoster(poster, !firstLoad));
+        }
+
+        count.textContent = shown.size + (shown.size === 1 ? " poster" : " posters");
+        if (shown.size === 0) {
+          showMessage("No posters yet. Make one, and it will show up here soon! 🎨");
+        } else {
+          message.hidden = true;
+        }
+      } catch (error) {
+        console.log("[gallery] Could not load posters:", error);
+        // Keep any posters already on screen; only show a message if the page is empty
+        if (shown.size === 0) showMessage("The gallery is taking a break. Try again in a minute.");
+      }
+    }
+
+    loadPosters();
+    setInterval(loadPosters, REFRESH_SECONDS * 1000);
+  </script>
+</body>
+</html>
